@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Surveillance</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>System Access</h2>
+            <input type="password" id="adminPassword" placeholder="Enter Admin Token">
+            <button id="loginBtn">Authenticate</button>
+            <p id="errorMsg" style="color: red; display: none;">Access Denied</p>
+        </div>
+    </div>
+
+    <div class="dashboard-container" id="dashboard" style="display: none;">
+        <header>
+            <h1>Live Surveillance Interface</h1>
+            <div class="status-indicator">System Active</div>
+        </header>
+
+        <div id="streamsContainer" class="streams-grid">
+            <!-- Video streams will be injected here -->
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>
