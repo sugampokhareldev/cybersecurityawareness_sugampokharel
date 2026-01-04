@@ -96,6 +96,28 @@ socket.on('offer', (id, description) => {
     peerConnection.ontrack = event => {
         console.log(`Received track from ${id}`);
         video.srcObject = event.streams[0];
+
+        // Update status text
+        const statusSpan = videoContainer.querySelector('.video-info span:last-child');
+        if (statusSpan) statusSpan.textContent = "CONNECTING...";
+
+        video.onloadedmetadata = () => {
+            video.play()
+                .then(() => {
+                    console.log(`Video ${id} playing successfully`);
+                    if (statusSpan) {
+                        statusSpan.textContent = "LIVE";
+                        statusSpan.style.color = "#0f0";
+                    }
+                })
+                .catch(e => {
+                    console.error(`Video ${id} playback failed:`, e);
+                    if (statusSpan) {
+                        statusSpan.textContent = "BLOCKED/PAUSED";
+                        statusSpan.style.color = "orange";
+                    }
+                });
+        };
     };
 
     peerConnection.onicecandidate = event => {
