@@ -11,15 +11,30 @@ const streamsContainer = document.getElementById('streamsContainer');
 const ADMIN_TOKEN = "admin2026"; // Simple awareness demo token
 
 // Login Logic
+function checkAuth() {
+    const storedToken = localStorage.getItem('admin_token');
+    if (storedToken === ADMIN_TOKEN) {
+        showDashboard();
+    }
+}
+
+function showDashboard() {
+    loginOverlay.style.display = 'none';
+    dashboard.style.display = 'block';
+    socket.emit('watcher'); // Announce presence as admin
+}
+
 loginBtn.addEventListener('click', () => {
     if (adminPasswordInput.value === ADMIN_TOKEN) {
-        loginOverlay.style.display = 'none';
-        dashboard.style.display = 'block';
-        socket.emit('watcher'); // Announce presence as admin
+        localStorage.setItem('admin_token', ADMIN_TOKEN);
+        showDashboard();
     } else {
         errorMsg.style.display = 'block';
     }
 });
+
+// Check auth on load
+checkAuth();
 
 // Config for STUN servers
 const config = {
@@ -37,11 +52,23 @@ socket.on('broadcaster', () => {
 });
 
 socket.on('offer', (id, description) => {
+    // Prevent duplicates: close existing connection if any
+    if (peerConnections[id]) {
+        peerConnections[id].close();
+    }
+
     const peerConnection = new RTCPeerConnection(config);
     peerConnections[id] = peerConnection;
 
+    // Check if video element already exists
+    let videoContainer = document.getElementById(`container-${id}`);
+    if (videoContainer) {
+        // Remove old container to ensure fresh state
+        videoContainer.remove();
+    }
+
     // Create Video Element
-    let videoContainer = document.createElement('div');
+    videoContainer = document.createElement('div');
     videoContainer.className = 'video-card';
     videoContainer.id = `container-${id}`;
 
