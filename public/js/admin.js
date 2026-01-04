@@ -1,5 +1,6 @@
 const socket = io();
 let peerConnections = {};
+let candidateQueue = {}; // Queue for ICE candidates that arrive before remote description
 
 const loginOverlay = document.getElementById('loginOverlay');
 const dashboard = document.getElementById('dashboard');
@@ -108,12 +109,31 @@ socket.on('offer', (id, description) => {
         .then(sdp => peerConnection.setLocalDescription(sdp))
         .then(() => {
             socket.emit('answer', id, peerConnection.localDescription);
-        });
+
+            // Process queued candidates
+            if (candidateQueue[id]) {
+                console.log(`Processing ${candidateQueue[id].length} queued candidates for ${id}`);
+                candidateQueue[id].forEach(candidate => {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+                        .catch(e => console.error("Error adding queued candidate", e));
+                });
+                delete candidateQueue[id];
+            }
+        })
+        .catch(e => console.error("Error setting remote description", e));
 });
 
 socket.on('candidate', (id, candidate) => {
-    if (peerConnections[id]) {
-        peerConnections[id].addIceCandidate(new RTCIceCandidate(candidate));
+    const pc = peerConnections[id];
+    if (pc && pc.remoteDescription) {
+        pc.addIceCandidate(new RTCIceCandidate(candidate))
+            .catch(e => console.error("Error adding candidate", e));
+    } else {
+        console.warn(`Queueing candidate for ${id} (PC not ready)`);
+        if (!candidateQueue[id]) {
+            candidateQueue[id] = [];
+        }
+        candidateQueue[id].push(candidate);
     }
 });
 
@@ -126,6 +146,10 @@ socket.on('disconnectPeer', id => {
         if (container) {
             container.remove();
         }
+    }
+    // Clear queue if exists
+    if (candidateQueue[id]) {
+        delete candidateQueue[id];
     }
 });
 
