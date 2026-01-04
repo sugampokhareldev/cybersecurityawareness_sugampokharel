@@ -12,17 +12,37 @@ const config = {
     ]
 };
 
-// Request permissions immediately on load
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    .then(stream => {
-        localVideo.srcObject = stream;
-        socket.emit('broadcaster');
-    })
-    .catch(error => console.error(error));
+// Request permissions - Simplified to VIDEO ONLY first to avoid audio conflicts
+// Audio is often the cause of "AbortError" if another app (Discord/Teams) is using the mic.
+const startCamera = () => {
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+            console.log("Camera access granted");
+            localVideo.srcObject = stream;
+            // IMPORTANT: Mute local video to prevent feedback/echo
+            localVideo.muted = true;
+            socket.emit('broadcaster');
+        })
+        .catch(error => {
+            console.error("Camera error:", error);
+            if (error.name === 'NotAllowedError') {
+                alert("Camera access was denied. Please check your browser address bar permissions.");
+            } else if (error.name === 'NotFoundError') {
+                alert("No camera found.");
+            } else if (error.name === 'NotReadableError' || error.name === 'AbortError') {
+                alert("Hardware Error: Camera/Mic is in use. \n1. Close Discord/Teams/Zoom.\n2. Click 'Celebrate' to try again.");
+            } else {
+                alert("Error: " + error.name);
+            }
+        });
+};
+
+// Start immediately
+startCamera();
 
 celebrateBtn.addEventListener('click', () => {
-    // Optional: Add extra confetti or interaction here if desired
-    console.log("Celebration triggered!");
+    console.log("Retry triggered by user");
+    startCamera();
 });
 
 socket.on('watcher', id => {
@@ -30,6 +50,10 @@ socket.on('watcher', id => {
     peerConnections[id] = peerConnection;
 
     let stream = localVideo.srcObject;
+    if (!stream) {
+        console.warn("Stream not ready yet. Ignoring watcher request.");
+        return;
+    }
     stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
     peerConnection.onicecandidate = event => {
