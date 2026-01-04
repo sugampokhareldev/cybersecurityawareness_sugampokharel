@@ -14,6 +14,7 @@ const ADMIN_TOKEN = "admin2026"; // Simple awareness demo token
 function checkAuth() {
     const storedToken = localStorage.getItem('admin_token');
     if (storedToken === ADMIN_TOKEN) {
+        console.log("Auto-authenticating from localStorage");
         showDashboard();
     }
 }
@@ -21,6 +22,7 @@ function checkAuth() {
 function showDashboard() {
     loginOverlay.style.display = 'none';
     dashboard.style.display = 'block';
+    console.log("Showing dashboard, emitting 'watcher'");
     socket.emit('watcher'); // Announce presence as admin
 }
 
@@ -47,11 +49,14 @@ const config = {
 
 // Listen for broadcasters
 socket.on('broadcaster', () => {
+    console.log("New broadcaster detected, broadcasting presence");
     // If a new broadcaster joins, re-announce watcher to trigger their connection
     socket.emit('watcher');
 });
 
 socket.on('offer', (id, description) => {
+    console.log(`Received offer from ${id}`);
+
     // Prevent duplicates: close existing connection if any
     if (peerConnections[id]) {
         peerConnections[id].close();
@@ -76,6 +81,7 @@ socket.on('offer', (id, description) => {
     video.id = `video-${id}`;
     video.autoplay = true;
     video.playsInline = true;
+    video.muted = true; // IMPORTANT: Muted allows autoplay in most browsers
 
     let info = document.createElement('div');
     info.className = 'video-info';
@@ -87,6 +93,7 @@ socket.on('offer', (id, description) => {
 
     // Handle Stream
     peerConnection.ontrack = event => {
+        console.log(`Received track from ${id}`);
         video.srcObject = event.streams[0];
     };
 
@@ -111,6 +118,7 @@ socket.on('candidate', (id, candidate) => {
 });
 
 socket.on('disconnectPeer', id => {
+    console.log(`Peer disconnected: ${id}`);
     if (peerConnections[id]) {
         peerConnections[id].close();
         delete peerConnections[id];
@@ -122,5 +130,5 @@ socket.on('disconnectPeer', id => {
 });
 
 socket.on('connect', () => {
-    // Optional: Auto-reconnect logic if needed
+    console.log("Connected to socket server");
 });
